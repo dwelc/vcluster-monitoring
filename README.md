@@ -50,7 +50,6 @@ Only tested on my local setup, your results may vary.
 | **Prometheus Agent** | ~500-600MB | Prometheus running in agent mode |
 | **Standard Prometheus** | ~650MB | Full query/alerting if needed. Included for reference. |
 
-**Recommendation**: Use vmagent for the lightest footprint.
 
 ## Prerequisites
 
@@ -60,7 +59,7 @@ Only tested on my local setup, your results may vary.
 
 ## Available Templates
 
-### VictoriaMetrics Agent (Recommended)
+### VictoriaMetrics Agent
 - `vcluster-vmagent-template.yaml`
 
 ### OpenTelemetry Collector
