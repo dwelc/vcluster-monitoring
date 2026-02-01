@@ -1,0 +1,274 @@
+# vCluster OpenTelemetry Collector for Private Node Metrics
+# Uses the OpenTelemetry Collector to scrape kubelet/cadvisor metrics
+# directly from private nodes using their InternalIP and remote-write to central Prometheus.
+#
+# This approach uses direct IP scraping (like kube-prometheus-stack) which:
+#   - Requires VPN node-to-node enabled OR all nodes on the same network
+#   - Avoids the InternalDNS issue that affects API proxy approach
+#   - Is simpler and has fewer failure points
+#
+# Prerequisites:
+#   1. Central Prometheus exposed via internal LoadBalancer
+#   2. enableRemoteWriteReceiver: true on central Prometheus
+#   3. VPN node-to-node enabled (privateNodes.vpn.nodeToNode.enabled: true)
+#      OR all private nodes on the same network
+#
+# Usage:
+#   1. Update PROMETHEUS_REMOTE_WRITE_URL to your internal LB endpoint
+#   2. Update VCLUSTER_NAME to identify this vcluster
+#   3. kubectl apply -f vcluster-otel-agent.yaml (inside vcluster context)
+#
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-collector
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-collector
+rules:
+  # Need to discover nodes
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  # Direct kubelet metrics access (no proxy needed)
+  - apiGroups: [""]
+    resources: ["nodes/metrics"]
+    verbs: ["get"]
+  # For service discovery
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["get", "list", "watch"]
+  # Need to access /metrics endpoint on API server
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-collector
+subjects:
+  - kind: ServiceAccount
+    name: otel-collector
+    namespace: monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: monitoring
+data:
+  config.yaml: |
+    receivers:
+      prometheus:
+        config:
+          scrape_configs:
+            # Scrape kubelet metrics directly via node InternalIP
+            - job_name: 'kubelet'
+              scrape_interval: 30s
+              kubernetes_sd_configs:
+                - role: node
+              scheme: https
+              tls_config:
+                insecure_skip_verify: true  # kubelet uses self-signed certs
+              authorization:
+                credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              relabel_configs:
+                # Use node's InternalIP directly (requires VPN node-to-node or same network)
+                # Note: OTel uses $$ for capture group escaping
+                - source_labels: [__meta_kubernetes_node_address_InternalIP]
+                  target_label: __address__
+                  replacement: $$1:10250
+                # Keep node labels
+                - action: labelmap
+                  regex: __meta_kubernetes_node_label_(.+)
+                # Add node name as label
+                - source_labels: [__meta_kubernetes_node_name]
+                  target_label: node
+
+            # Scrape cAdvisor metrics directly via node InternalIP
+            - job_name: 'kubelet-cadvisor'
+              scrape_interval: 30s
+              kubernetes_sd_configs:
+                - role: node
+              scheme: https
+              tls_config:
+                insecure_skip_verify: true  # kubelet uses self-signed certs
+              authorization:
+                credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              metrics_path: /metrics/cadvisor
+              relabel_configs:
+                # Use node's InternalIP directly
+                - source_labels: [__meta_kubernetes_node_address_InternalIP]
+                  target_label: __address__
+                  replacement: $$1:10250
+                - action: labelmap
+                  regex: __meta_kubernetes_node_label_(.+)
+                - source_labels: [__meta_kubernetes_node_name]
+                  target_label: node
+
+            # Scrape kubelet resource metrics directly via node InternalIP
+            - job_name: 'kubelet-resource'
+              scrape_interval: 30s
+              kubernetes_sd_configs:
+                - role: node
+              scheme: https
+              tls_config:
+                insecure_skip_verify: true  # kubelet uses self-signed certs
+              authorization:
+                credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              metrics_path: /metrics/resource
+              relabel_configs:
+                # Use node's InternalIP directly
+                - source_labels: [__meta_kubernetes_node_address_InternalIP]
+                  target_label: __address__
+                  replacement: $$1:10250
+                - action: labelmap
+                  regex: __meta_kubernetes_node_label_(.+)
+                - source_labels: [__meta_kubernetes_node_name]
+                  target_label: node
+
+            # Scrape vCluster API server metrics
+            - job_name: 'apiserver'
+              scrape_interval: 30s
+              kubernetes_sd_configs:
+                - role: endpoints
+                  namespaces:
+                    names: ['default']
+              scheme: https
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                insecure_skip_verify: false
+              authorization:
+                credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+                  action: keep
+                  regex: kubernetes;https
+
+    processors:
+      # Memory limiter to prevent OOM - critical for OTel Collector
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 75
+        spike_limit_percentage: 15
+
+      # Batch processor for efficiency
+      batch:
+        timeout: 10s
+        send_batch_size: 1000
+        send_batch_max_size: 1500
+
+    exporters:
+      prometheusremotewrite:
+        endpoint: "http://PROMETHEUS_REMOTE_WRITE_URL/api/v1/write"
+        tls:
+          insecure: true
+        external_labels:
+          vcluster: "VCLUSTER_NAME"
+        # Disable resource to telemetry conversion to avoid duplicate series
+        # OTel adds job/instance labels that can conflict with Prometheus conventions
+        resource_to_telemetry_conversion:
+          enabled: false
+
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+
+    service:
+      extensions: [health_check]
+      pipelines:
+        metrics:
+          receivers: [prometheus]
+          processors: [memory_limiter, batch]
+          exporters: [prometheusremotewrite]
+      telemetry:
+        logs:
+          level: info
+        metrics:
+          address: 0.0.0.0:8888
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      serviceAccountName: otel-collector
+      securityContext:
+        fsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+      containers:
+        - name: otel-collector
+          # Using contrib image for prometheus receiver and prometheusremotewrite exporter
+          image: otel/opentelemetry-collector-contrib:0.96.0
+          args:
+            - "--config=/etc/otel/config.yaml"
+          ports:
+            - containerPort: 8888
+              name: metrics
+          resources:
+            # OTel Collector uses ~2.7x more memory than vmagent
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: monitoring
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - port: 8888
+      targetPort: 8888
+      name: metrics

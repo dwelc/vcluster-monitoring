@@ -1,0 +1,12 @@
+# Personal configuration files with specific endpoint values
+vcluster-prometheus-kubelet.yaml
+vcluster-vmagent.yaml
+vcluster-prometheus-agent.yaml
+vcluster-otel-agent.yaml
+
+# Editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
