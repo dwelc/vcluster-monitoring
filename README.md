@@ -61,16 +61,16 @@ Only tested on my local setup, your results may vary.
 ## Available Templates
 
 ### VictoriaMetrics Agent (Recommended)
-- `vcluster-vmagent-template.yaml` - Template with placeholders
+- `vcluster-vmagent-template.yaml`
 
 ### OpenTelemetry Collector
-- `vcluster-otel-agent-template.yaml` - Template with placeholders
+- `vcluster-otel-agent-template.yaml`
 
 ### Prometheus Agent Mode
-- `vcluster-prometheus-agent-template.yaml` - Template with placeholders
+- `vcluster-prometheus-agent-template.yaml`
 
 ### Standard Prometheus
-- `vcluster-prometheus-kubelet-template.yaml` - Template with placeholders
+- `vcluster-prometheus-kubelet-template.yaml`
 
 ## Grafana Dashboard
 
