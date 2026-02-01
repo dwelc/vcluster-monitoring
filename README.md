@@ -62,19 +62,15 @@ Only tested on my local setup, your results may vary.
 
 ### VictoriaMetrics Agent (Recommended)
 - `vcluster-vmagent-template.yaml` - Template with placeholders
-- `vcluster-vmagent.yaml` - Example with values filled in
 
 ### OpenTelemetry Collector
 - `vcluster-otel-agent-template.yaml` - Template with placeholders
-- `vcluster-otel-agent.yaml` - Example with values filled in
 
 ### Prometheus Agent Mode
 - `vcluster-prometheus-agent-template.yaml` - Template with placeholders
-- `vcluster-prometheus-agent.yaml` - Example with values filled in
 
 ### Standard Prometheus
 - `vcluster-prometheus-kubelet-template.yaml` - Template with placeholders
-- `vcluster-prometheus-kubelet.yaml` - Example with values filled in
 
 ## Grafana Dashboard
 
