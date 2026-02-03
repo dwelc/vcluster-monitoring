@@ -1,0 +1,73 @@
+---
+mode: daemonset
+presets:
+  kubeletMetrics:
+    enabled: true
+  kubernetesAttributes:
+    enabled: true
+service:
+  enabled: true
+config:
+  receivers:
+    kubeletstats:
+      insecure_skip_verify: true
+  processors:
+    attributes:
+      actions:
+      - action: upsert
+        key: cluster
+        value: "{{ .Values.loft.cluster }}"
+      - action: upsert
+        key: loft_project_name
+        value: "{{ .Values.loft.project }}"
+      - action: upsert
+        key: loft_virtualcluster_name
+        value: "{{ .Values.loft.name }}"
+      - action: upsert
+        key: loft_user_name
+        value: "{{ .Values.loft.user.name }}"
+    k8sattributes:
+      auth_type: 'serviceAccount'
+      extract:
+        metadata:
+        - k8s.namespace.name
+        - k8s.pod.name
+        - k8s.pod.start_time
+        - k8s.pod.uid
+        - k8s.deployment.name
+        - k8s.node.name
+    transform:
+      error_mode: ignore
+      metric_statements:
+        context: datapoint
+        statements:
+        - 'set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"])'
+        - 'set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])'
+        - 'set(attributes["k8s.namespace.name"], resource.attributes["k8s.namespace.name"])'
+    memory_limiter:
+      check_interval: 1s
+      limit_percentage: 75
+      spike_limit_percentage: 15
+    batch:
+      send_batch_size: 10000
+      timeout: 10s
+  exporters:
+    otlphttp/prometheus:
+      endpoint: '{{ .Values.prometheus.endpoint }}/api/v1/otlp'
+      tls:
+        insecure_skip_verify: "{{ .Values.prometheus.insecure }}"
+  service:
+    extensions:
+    - health_check
+    pipelines:
+      metrics:
+        receivers:
+        - kubeletstats
+        processors:
+        - batch
+        - memory_limiter
+        - k8sattributes
+        - attributes
+        - transform
+        exporters:
+        - otlphttp/prometheus
