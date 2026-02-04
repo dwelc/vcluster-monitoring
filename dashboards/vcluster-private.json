@@ -20,7 +20,32 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": true,
+      "title": "Overview",
+      "tooltip": "Back to fleet overview",
+      "type": "link",
+      "url": "/d/vcluster-overview"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": true,
+      "title": "Projects (Private)",
+      "tooltip": "View private-node projects",
+      "type": "link",
+      "url": "/d/vcluster-projects"
+    }
+  ],
   "panels": [
     {
       "collapsed": false,

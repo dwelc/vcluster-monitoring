@@ -15,24 +15,12 @@
       }
     ]
   },
-  "description": "Overview of all vClusters - both private-node and shared-node deployments",
+  "description": "Platform admin view of all projects. Aggregates metrics by loft_project_name across private-node vClusters.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
   "links": [
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": true,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": true,
-      "title": "Projects (Private)",
-      "tooltip": "View private-node projects",
-      "type": "link",
-      "url": "/d/vcluster-projects"
-    },
     {
       "asDropdown": false,
       "icon": "external link",
@@ -52,10 +40,10 @@
       "keepTime": true,
       "tags": [],
       "targetBlank": true,
-      "title": "Private vCluster Detail",
-      "tooltip": "Drill down to individual private vCluster",
+      "title": "vCluster Overview",
+      "tooltip": "View all vClusters",
       "type": "link",
-      "url": "/d/vcluster-private-nodes"
+      "url": "/d/vcluster-overview"
     },
     {
       "asDropdown": false,
@@ -64,10 +52,10 @@
       "keepTime": true,
       "tags": [],
       "targetBlank": true,
-      "title": "Shared vCluster Detail",
-      "tooltip": "Drill down to individual shared vCluster",
+      "title": "Private Nodes Detail",
+      "tooltip": "Drill down to private node vClusters",
       "type": "link",
-      "url": "/d/vcluster-shared"
+      "url": "/d/vcluster-private-nodes"
     }
   ],
   "panels": [
@@ -76,7 +64,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 1,
       "panels": [],
-      "title": "Fleet Summary",
+      "title": "Project Summary",
       "type": "row"
     },
     {
@@ -105,11 +93,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "count(group by (loft_virtualcluster_name) (kubelet_running_pods{loft_virtualcluster_name!=\"\"}))",
+          "expr": "count(count by (loft_project_name) (kubelet_running_pods{loft_project_name!=\"\"}))",
           "refId": "A"
         }
       ],
-      "title": "Private vClusters",
+      "title": "Total Projects",
       "type": "stat"
     },
     {
@@ -138,11 +126,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "count(count by (namespace) (kube_pod_info{namespace=~\"loft-default-v-.*\"}))",
+          "expr": "count(count by (loft_virtualcluster_name) (kubelet_running_pods{loft_virtualcluster_name!=\"\"}))",
           "refId": "A"
         }
       ],
-      "title": "Shared vClusters",
+      "title": "Total vClusters",
       "type": "stat"
     },
     {
@@ -171,7 +159,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(kubelet_running_pods) + sum(kube_pod_container_status_running{namespace=~\"loft-default-v-.*\"})",
+          "expr": "sum(kubelet_running_pods{loft_project_name!=\"\"})",
           "refId": "A"
         }
       ],
@@ -183,8 +171,8 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "reqps"
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] },
+          "unit": "short"
         },
         "overrides": []
       },
@@ -204,11 +192,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(rate(apiserver_request_total{loft_virtualcluster_name!=\"\"}[5m])) + sum(rate(apiserver_request_total{job!~\"apiserver|kubelet\"}[5m]))",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{loft_project_name!=\"\", container!=\"\"}[5m]))",
           "refId": "A"
         }
       ],
-      "title": "Total API Req/s",
+      "title": "Total CPU (cores)",
       "type": "stat"
     },
     {
@@ -216,8 +204,8 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.1 }] },
-          "unit": "reqps"
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "bytes"
         },
         "overrides": []
       },
@@ -237,11 +225,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(rate(apiserver_request_total{loft_virtualcluster_name!=\"\", code=~\"5..\"}[5m])) + sum(rate(apiserver_request_total{job!~\"apiserver|kubelet\", code=~\"5..\"}[5m]))",
+          "expr": "sum(container_memory_working_set_bytes{loft_project_name!=\"\", container!=\"\"})",
           "refId": "A"
         }
       ],
-      "title": "Total API Errors/s",
+      "title": "Total Memory",
       "type": "stat"
     },
     {
@@ -249,8 +237,8 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.5 }, { "color": "red", "value": 1 }] },
-          "unit": "s"
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 }] },
+          "unit": "percentunit"
         },
         "overrides": []
       },
@@ -258,7 +246,7 @@
       "id": 7,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -270,11 +258,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "max(histogram_quantile(0.95, sum by (le) (rate(apiserver_request_duration_seconds_bucket{loft_virtualcluster_name!=\"\", verb!~\"WATCH|CONNECT\"}[5m])))) or max(histogram_quantile(0.95, sum by (le) (rate(apiserver_request_duration_seconds_bucket{job!~\"apiserver|kubelet\", verb!~\"WATCH|CONNECT\"}[5m]))))",
+          "expr": "max(sum by (loft_project_name) (rate(apiserver_request_total{loft_project_name!=\"\", code=~\"5..\"}[5m])) / sum by (loft_project_name) (rate(apiserver_request_total{loft_project_name!=\"\"}[5m])))",
           "refId": "A"
         }
       ],
-      "title": "Max P95 Latency",
+      "title": "Max Error Rate",
       "type": "stat"
     },
     {
@@ -282,7 +270,227 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 10,
       "panels": [],
-      "title": "All vClusters - API Server",
+      "title": "Resource Usage by Project",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineWidth": 1,
+            "scaleDistribution": { "type": "linear" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 6 },
+      "id": 11,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.7,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": { "mode": "single", "sort": "none" },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sort_desc(sum by (loft_project_name) (rate(container_cpu_usage_seconds_total{loft_project_name!=\"\", container!=\"\"}[5m])))",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "{{loft_project_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU by Project (cores)",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineWidth": 1,
+            "scaleDistribution": { "type": "linear" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 6 },
+      "id": 12,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.7,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": { "mode": "single", "sort": "none" },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sort_desc(sum by (loft_project_name) (container_memory_working_set_bytes{loft_project_name!=\"\", container!=\"\"}))",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "{{loft_project_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Memory by Project",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineWidth": 1,
+            "scaleDistribution": { "type": "linear" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 6 },
+      "id": 13,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.7,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": { "mode": "single", "sort": "none" },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sort_desc(sum by (loft_project_name) (kubelet_running_pods{loft_project_name!=\"\"}))",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "{{loft_project_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Pods by Project",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineWidth": 1,
+            "scaleDistribution": { "type": "linear" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 6 },
+      "id": 14,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.7,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": { "mode": "single", "sort": "none" },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sort_desc(count by (loft_project_name) (count by (loft_project_name, loft_virtualcluster_name) (kubelet_running_pods{loft_project_name!=\"\"})))",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "{{loft_project_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "vClusters by Project",
+      "type": "barchart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 20,
+      "panels": [],
+      "title": "API Health by Project",
       "type": "row"
     },
     {
@@ -319,8 +527,8 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
-      "id": 11,
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 15 },
+      "id": 21,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
@@ -329,15 +537,9 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (loft_virtualcluster_name) (rate(apiserver_request_total{loft_virtualcluster_name!=\"\"}[5m]))",
-          "legendFormat": "{{loft_virtualcluster_name}}",
+          "expr": "sum by (loft_project_name) (rate(apiserver_request_total{loft_project_name!=\"\"}[5m]))",
+          "legendFormat": "{{loft_project_name}}",
           "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (job) (rate(apiserver_request_total{job!~\"apiserver|kubelet\"}[5m]))",
-          "legendFormat": "{{job}}",
-          "refId": "B"
         }
       ],
       "title": "API Request Rate",
@@ -377,8 +579,8 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
-      "id": 12,
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 15 },
+      "id": 22,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
@@ -387,15 +589,9 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (loft_virtualcluster_name) (rate(apiserver_request_total{loft_virtualcluster_name!=\"\", code=~\"5..\"}[5m]))",
-          "legendFormat": "{{loft_virtualcluster_name}}",
+          "expr": "sum by (loft_project_name) (rate(apiserver_request_total{loft_project_name!=\"\", code=~\"5..\"}[5m]))",
+          "legendFormat": "{{loft_project_name}}",
           "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (job) (rate(apiserver_request_total{job!~\"apiserver|kubelet\", code=~\"5..\"}[5m]))",
-          "legendFormat": "{{job}}",
-          "refId": "B"
         }
       ],
       "title": "API Error Rate (5xx)",
@@ -430,13 +626,13 @@
             "thresholdsStyle": { "mode": "off" }
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.5 }, { "color": "red", "value": 1 }] },
           "unit": "s"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
-      "id": 13,
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 15 },
+      "id": 23,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
@@ -445,15 +641,9 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "histogram_quantile(0.95, sum by (vcluster, le) (rate(apiserver_request_duration_seconds_bucket{loft_virtualcluster_name!=\"\", verb!~\"WATCH|CONNECT\"}[5m])))",
-          "legendFormat": "{{loft_virtualcluster_name}}",
+          "expr": "histogram_quantile(0.95, sum by (loft_project_name, le) (rate(apiserver_request_duration_seconds_bucket{loft_project_name!=\"\", verb!~\"WATCH|CONNECT\"}[5m])))",
+          "legendFormat": "{{loft_project_name}}",
           "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "histogram_quantile(0.95, sum by (job, le) (rate(apiserver_request_duration_seconds_bucket{job!~\"apiserver|kubelet\", verb!~\"WATCH|CONNECT\"}[5m])))",
-          "legendFormat": "{{job}}",
-          "refId": "B"
         }
       ],
       "title": "API P95 Latency",
@@ -461,10 +651,10 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
-      "id": 20,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 30,
       "panels": [],
-      "title": "All vClusters - Resource Usage",
+      "title": "Resource Trends",
       "type": "row"
     },
     {
@@ -481,7 +671,7 @@
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 10,
+            "fillOpacity": 30,
             "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
@@ -492,7 +682,7 @@
             "showPoints": "never",
             "showValues": false,
             "spanNulls": true,
-            "stacking": { "group": "A", "mode": "none" },
+            "stacking": { "group": "A", "mode": "normal" },
             "thresholdsStyle": { "mode": "off" }
           },
           "mappings": [],
@@ -501,8 +691,8 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
-      "id": 21,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 31,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
@@ -511,18 +701,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (loft_virtualcluster_name) (rate(container_cpu_usage_seconds_total{loft_virtualcluster_name!=\"\", container!=\"\"}[5m]))",
-          "legendFormat": "{{loft_virtualcluster_name}}",
+          "expr": "sum by (loft_project_name) (rate(container_cpu_usage_seconds_total{loft_project_name!=\"\", container!=\"\"}[5m]))",
+          "legendFormat": "{{loft_project_name}}",
           "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=~\"loft-default-v-.*\", container!=\"\"}[5m]))",
-          "legendFormat": "{{namespace}}",
-          "refId": "B"
         }
       ],
-      "title": "CPU Usage (cores)",
+      "title": "CPU Usage Trend (stacked)",
       "type": "timeseries"
     },
     {
@@ -539,7 +723,7 @@
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 10,
+            "fillOpacity": 30,
             "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
@@ -550,7 +734,7 @@
             "showPoints": "never",
             "showValues": false,
             "spanNulls": true,
-            "stacking": { "group": "A", "mode": "none" },
+            "stacking": { "group": "A", "mode": "normal" },
             "thresholdsStyle": { "mode": "off" }
           },
           "mappings": [],
@@ -559,8 +743,8 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
-      "id": 22,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 32,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
@@ -569,24 +753,18 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (loft_virtualcluster_name) (container_memory_working_set_bytes{loft_virtualcluster_name!=\"\", container!=\"\"})",
-          "legendFormat": "{{loft_virtualcluster_name}}",
+          "expr": "sum by (loft_project_name) (container_memory_working_set_bytes{loft_project_name!=\"\", container!=\"\"})",
+          "legendFormat": "{{loft_project_name}}",
           "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (namespace) (container_memory_working_set_bytes{namespace=~\"loft-default-v-.*\", container!=\"\"})",
-          "legendFormat": "{{namespace}}",
-          "refId": "B"
         }
       ],
-      "title": "Memory Usage",
+      "title": "Memory Usage Trend (stacked)",
       "type": "timeseries"
     },
     {
       "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
-      "id": 30,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "id": 40,
       "panels": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
@@ -618,12 +796,12 @@
               },
               "mappings": [],
               "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-              "unit": "reqps"
+              "unit": "short"
             },
             "overrides": []
           },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
-          "id": 31,
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+          "id": 41,
           "options": {
             "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
             "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
@@ -632,64 +810,12 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "${datasource}" },
-              "expr": "sum by (loft_virtualcluster_name) (rate(apiserver_request_total{loft_virtualcluster_name!=\"\"}[5m]))",
-              "legendFormat": "{{loft_virtualcluster_name}}",
+              "expr": "sum by (loft_project_name) (kubelet_running_pods{loft_project_name!=\"\"})",
+              "legendFormat": "{{loft_project_name}}",
               "refId": "A"
             }
           ],
-          "title": "Private vClusters - API Request Rate",
-          "type": "timeseries"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": { "type": "linear" },
-                "showPoints": "never",
-                "showValues": false,
-                "spanNulls": true,
-                "stacking": { "group": "A", "mode": "none" },
-                "thresholdsStyle": { "mode": "off" }
-              },
-              "mappings": [],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-              "unit": "reqps"
-            },
-            "overrides": []
-          },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
-          "id": 32,
-          "options": {
-            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
-            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
-          },
-          "pluginVersion": "12.3.1",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "${datasource}" },
-              "expr": "sum by (job) (rate(apiserver_request_total{job!~\"apiserver|kubelet\"}[5m]))",
-              "legendFormat": "{{job}}",
-              "refId": "A"
-            }
-          ],
-          "title": "Shared vClusters - API Request Rate",
+          "title": "Pods Trend",
           "type": "timeseries"
         },
         {
@@ -726,8 +852,8 @@
             },
             "overrides": []
           },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
-          "id": 33,
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
+          "id": 42,
           "options": {
             "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
             "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
@@ -736,75 +862,23 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "${datasource}" },
-              "expr": "sum by (loft_virtualcluster_name) (rate(container_cpu_usage_seconds_total{loft_virtualcluster_name!=\"\", container!=\"\"}[5m]))",
-              "legendFormat": "{{loft_virtualcluster_name}}",
+              "expr": "count by (loft_project_name) (count by (loft_project_name, loft_virtualcluster_name) (kubelet_running_pods{loft_project_name!=\"\"}))",
+              "legendFormat": "{{loft_project_name}}",
               "refId": "A"
             }
           ],
-          "title": "Private vClusters - CPU Usage",
-          "type": "timeseries"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": { "type": "linear" },
-                "showPoints": "never",
-                "showValues": false,
-                "spanNulls": true,
-                "stacking": { "group": "A", "mode": "none" },
-                "thresholdsStyle": { "mode": "off" }
-              },
-              "mappings": [],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
-          "id": 34,
-          "options": {
-            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
-            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
-          },
-          "pluginVersion": "12.3.1",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "${datasource}" },
-              "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=~\"loft-default-v-.*\", container!=\"\"}[5m]))",
-              "legendFormat": "{{namespace}}",
-              "refId": "A"
-            }
-          ],
-          "title": "Shared vClusters - CPU Usage",
+          "title": "vClusters Trend",
           "type": "timeseries"
         }
       ],
-      "title": "Split by Type (Private vs Shared)",
+      "title": "Additional Trends (collapsed)",
       "type": "row"
     }
   ],
   "preload": false,
   "refresh": "30s",
   "schemaVersion": 42,
-  "tags": ["vcluster", "overview"],
+  "tags": ["vcluster", "projects", "platform-admin"],
   "templating": {
     "list": [
       {
@@ -817,13 +891,34 @@
         "refresh": 1,
         "regex": "",
         "type": "datasource"
+      },
+      {
+        "allValue": "",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(kubelet_running_pods{loft_project_name!=\"\"}, loft_project_name)",
+        "description": "Filter by project",
+        "includeAll": true,
+        "label": "Project",
+        "name": "project",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(kubelet_running_pods{loft_project_name!=\"\"}, loft_project_name)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
       }
     ]
   },
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "vCluster / Overview",
-  "uid": "vcluster-overview",
+  "title": "vCluster / Projects",
+  "uid": "vcluster-projects",
   "version": 1
 }
